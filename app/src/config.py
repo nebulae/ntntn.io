@@ -1,0 +1,4 @@
+OBJECT_INDEX = "object_index"
+
+DEFAULT_SEARCH_RESULTS_LIMIT = 25
+
