@@ -9,33 +9,17 @@ import logging
 
 
 class DynamicPropertyMixin(object):
-    """ Facilitates creating dynamic properties on ndb.Expando entities.
-        Also works on ndb.Model derived classes! 
-        Note: keyword args are passed on to the underlying ndb.XxxProperty() class
-    """
 
     def is_prop(self, name):
         return name in self._properties
 
     def set_dynamic_prop(self, cls, name, value, **kwds):
-        """ Creates a typed dynamic property.  This can be particularly useful for
-            ndb.PickleProperty and ndb.JsonProperty types in order to take advantage
-            of the datastore in/out conversions.
-
-            Note: keyword args are passed on to the underlying ndb.XxxProperty() class
-        """
         prop = cls(name, **kwds)
         prop._code_name = name
         self._properties[name] = prop
         prop._set_value(self, value)
 
     def set_unindexed_prop(self, name, value, **kwds):
-        """ Creates a generic unindexed property which is required for Expando to store
-            any ndb.BlobProperty() or derived class such as:
-                ndb.TextProperty()
-                ndb.PickleProperty()
-                ndb.JsonProperty()
-        """
         self.set_dynamic_prop(ndb.GenericProperty, name, value, indexed=False, **kwds)
 
     # --- The blob properties ---
@@ -117,10 +101,8 @@ class CurrencyModel(ndb.IntegerProperty):
     def _from_base_type(self, value):
         return Decimal(value) / 100
 
-
 class Meta(ndb.Expando, DynamicPropertyMixin):
     pass
-
 
 class Log(ndb.Model):
     date_created = ndb.DateTimeProperty(auto_now_add=True)
@@ -144,7 +126,7 @@ class BaseModel(ndb.Model):
 
     def to_dict(self):
         orig_dict = super(BaseModel, self).to_dict()
-        orig_dict['image'] = False if self.image is None else True
+        # orig_dict['image'] = False if self.image is None else True
         return orig_dict
 
     def _pre_put_hook(self):     
@@ -154,6 +136,39 @@ class BaseModel(ndb.Model):
     def _post_put_hook(self, future):
         logging.info(self)
         logging.info(future.get_result())
+
+
+class IndexedObjectModel(BaseModel):
+    def _post_put_hook(self, future):
+        logging.info(self.data)
+        for property in self.data._properties:
+            logging.info(property)
+        # for p in self.people:
+        #     person = p.get()
+        #     emails = []
+        #     for email in person.email:
+        #         emails.append(",".join(tokenize_autocomplete(email)))
+
+        #     numbers = []
+        #     for phone_number in person.phone_numbers:
+        #         numbers.append(",".join(tokenize_autocomplete(phone_number.number))) 
+
+        #     address = []
+        #     for add in person.address:
+        #         address.append(",".join(tokenize_autocomplete(add.to_search_string())))
+
+        #     fields = [
+        #         search.TextField(name="owner_id", value=str(self.key.id())),
+        #         search.TextField(name="full_name", value=",".join(tokenize_autocomplete(person.full_name))[:1024**1024] ),
+        #         search.TextField(name="email", value=",".join(emails)[:1024**1024]),
+        #         search.TextField(name="phone", value=",".join(numbers)[:1024**1024]),
+        #         search.TextField(name="address", value=",".join(address)[:1024**1024])
+        #     ]
+
+        #     doc = search.Document(doc_id=str(person.key.id()), fields=fields)
+        #     search.Index(OWNERS_INDEX).put(doc)
+        #     logging.info("added %s to index." % person.key.id())
+        
 
 class Note(BaseModel):
     objid = ndb.KeyProperty()
